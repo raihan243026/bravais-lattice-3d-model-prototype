@@ -1,0 +1,1494 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Advanced Bravais Lattices Explorer</title>
+
+    <!-- Bootstrap CSS -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <!-- Font Awesome for social media icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+    <!-- Google Fonts: Roboto for clean text, Orbitron for a techy feel -->
+    <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700&family=Roboto:wght@300;400;700&display=swap" rel="stylesheet">
+    <!-- Animate.css for entrance animations -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/animate.css/4.1.1/animate.min.css"/>
+
+    <style>
+        /* General Body Styles */
+        body {
+            font-family: 'Roboto', sans-serif;
+            line-height: 1.7;
+            background-color: #f0f2f5; /* Light theme default */
+            color: #333; /* Dark text for light theme */
+            transition: background-color 0.4s ease, color 0.4s ease;
+            scroll-behavior: smooth; /* Smooth scrolling for nav links */
+            overflow-x: hidden; /* Prevent horizontal scroll */
+        }
+
+        /* Navbar Customization */
+        .navbar {
+            box-shadow: 0 4px 12px rgba(0,0,0,.1);
+            background-color: #2c3e50 !important; /* Dark blue/grey by default */
+            transition: background-color 0.4s ease;
+        }
+
+        .navbar-brand {
+            font-family: 'Orbitron', sans-serif;
+            font-weight: 700;
+            font-size: 1.8rem;
+            color: #ecf0f1 !important; /* Light text */
+            text-shadow: 0 0 5px rgba(52, 152, 219, 0.5); /* Subtle glow */
+        }
+
+        .nav-link {
+            font-weight: 500;
+            color: #bdc3c7 !important; /* Lighter grey for links */
+            transition: color 0.3s ease, transform 0.2s ease, background-color 0.2s ease;
+            padding: 0.5rem 1rem;
+            border-radius: 5px;
+        }
+
+        .nav-link:hover {
+            color: #3498db !important; /* Primary blue on hover */
+            transform: translateY(-3px);
+            background-color: rgba(255,255,255,0.05);
+        }
+
+        .dropdown-menu-dark {
+            background-color: #34495e;
+            border: none;
+            box-shadow: 0 8px 16px rgba(0,0,0,0.3);
+            animation: fadeIn 0.3s ease-out; /* Dropdown animation */
+        }
+        .dropdown-item {
+            color: #ecf0f1 !important;
+            transition: background-color 0.2s ease;
+        }
+        .dropdown-item:hover {
+            background-color: #3a536b;
+        }
+
+        /* Main Content Padding */
+        main {
+            min-height: calc(100vh - 150px);
+        }
+
+        /* 3D Canvas Container */
+        .bravais-canvas-container {
+            position: relative;
+            width: 100%;
+            aspect-ratio: 16 / 9;
+            background-color: #e6f0f7; /* Subtle light background */
+            border-radius: 12px;
+            overflow: hidden;
+            box-shadow: 0 8px 20px rgba(0,0,0,.15);
+            transition: background-color 0.4s ease, box-shadow 0.4s ease;
+        }
+
+        #bravaisCanvas {
+            width: 100%;
+            height: 100%;
+            display: block;
+            cursor: grab; /* Indicate draggable surface */
+        }
+        #bravaisCanvas:active {
+            cursor: grabbing;
+        }
+
+        /* CSS2D Renderer for labels */
+        #label-container {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            pointer-events: none; /* Allow clicks to pass through to canvas */
+            overflow: hidden;
+            z-index: 5; /* Below loading overlay, above canvas */
+        }
+
+        .atom-label {
+            background-color: rgba(0, 0, 0, 0.6);
+            color: white;
+            padding: 3px 6px;
+            border-radius: 4px;
+            font-size: 0.75rem;
+            white-space: nowrap;
+            opacity: 0;
+            transition: opacity 0.2s ease;
+            pointer-events: none; /* Labels shouldn't block interaction */
+            transform: translate(-50%, -50%); /* Center label */
+        }
+        .atom-label.visible {
+            opacity: 1;
+        }
+
+
+        .loading-overlay {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(255, 255, 255, 0.95);
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            z-index: 10;
+            opacity: 1;
+            visibility: visible;
+            transition: opacity 0.4s ease, visibility 0.4s ease;
+        }
+
+        .loading-overlay.hidden {
+            opacity: 0;
+            visibility: hidden;
+            pointer-events: none;
+        }
+        .loading-text {
+            font-size: 1.2rem;
+            font-weight: 500;
+            color: #007bff;
+        }
+
+        /* Controls Panel */
+        .controls-panel {
+            background-color: #ffffff;
+            border-radius: 12px;
+            box-shadow: 0 4px 15px rgba(0,0,0,.08);
+            transition: background-color 0.4s ease, box-shadow 0.4s ease;
+        }
+        .controls-panel .form-check-label {
+            font-weight: 500;
+            color: #555;
+            cursor: pointer;
+        }
+        .form-check-input:checked {
+            background-color: #007bff;
+            border-color: #007bff;
+        }
+        .controls-panel .btn {
+            font-size: 0.9rem;
+            padding: 0.4rem 0.8rem;
+        }
+
+        /* Card Styling for Lattice Info */
+        .card {
+            border: none;
+            border-radius: 12px;
+            box-shadow: 0 6px 20px rgba(0,0,0,.1);
+            transition: background-color 0.4s ease, box-shadow 0.4s ease;
+        }
+        .card-title {
+            font-weight: 700;
+            color: #2c3e50;
+        }
+        .list-group-item {
+            background-color: transparent;
+            border-color: rgba(0,0,0,.08);
+            color: #444;
+            transition: background-color 0.4s ease, color 0.4s ease;
+        }
+
+        /* Footer Styling */
+        footer {
+            background-color: #2c3e50 !important; /* Match navbar */
+            color: #ecf0f1;
+        }
+
+        .social-icons a {
+            color: inherit;
+            transition: color 0.3s ease, transform 0.3s ease;
+        }
+
+        .social-icons a:hover {
+            color: #3498db;
+            transform: translateY(-5px); /* More pronounced lift */
+        }
+
+        /* Animations */
+        /* Animate.css integration handled by classes in HTML */
+        section {
+            padding: 60px 0;
+        }
+
+        .btn {
+            transition: transform 0.2s ease, box-shadow 0.2s ease, background-color 0.2s ease;
+        }
+        .btn:hover {
+            transform: translateY(-3px); /* More pronounced lift */
+            box-shadow: 0 8px 15px rgba(0,0,0,.2);
+        }
+
+        /* Responsive adjustments */
+        @media (max-width: 768px) {
+            .navbar-brand {
+                font-size: 1.4rem;
+            }
+            .display-4 {
+                font-size: 2.2rem;
+            }
+            .lead {
+                font-size: 0.95rem;
+            }
+            .social-icons .fab {
+                font-size: 1.8em !important;
+            }
+            .controls-panel .col-md-4 {
+                flex: 0 0 100%; /* Stack checkboxes vertically on small screens */
+                max-width: 100%;
+            }
+        }
+
+        /* Dark Theme Specific Styles */
+        body.dark-theme {
+            background-color: #212529; /* Deep dark background */
+            color: #e9ecef; /* Light text */
+        }
+
+        .dark-theme .navbar {
+            background-color: #1a1a1a !important; /* Even darker navbar */
+            box-shadow: 0 4px 12px rgba(0,0,0,.3);
+        }
+
+        .dark-theme .navbar-brand {
+            color: #e0e0e0 !important;
+            text-shadow: 0 0 5px rgba(97, 218, 251, 0.5); /* Cyan glow for dark theme */
+        }
+
+        .dark-theme .nav-link {
+            color: #b0b0b0 !important;
+        }
+
+        .dark-theme .nav-link:hover {
+            color: #61dafb !important; /* Cyan for hover */
+            background-color: rgba(255,255,255,0.08);
+        }
+
+        .dark-theme .dropdown-menu-dark {
+            background-color: #2a2a2a;
+            box-shadow: 0 8px 16px rgba(0,0,0,0.5);
+        }
+        .dark-theme .dropdown-item {
+            color: #e0e0e0 !important;
+        }
+        .dark-theme .dropdown-item:hover {
+            background-color: #3a3a3a;
+        }
+
+        .dark-theme .bravais-canvas-container {
+            background-color: #2a2a2a;
+            box-shadow: 0 8px 20px rgba(0,0,0,.4);
+        }
+
+        .dark-theme .loading-overlay {
+            background-color: rgba(0, 0, 0, 0.95);
+        }
+        .dark-theme .loading-text {
+            color: #61dafb;
+        }
+
+        .dark-theme .controls-panel {
+            background-color: #2a2a2a;
+            box-shadow: 0 4px 15px rgba(0,0,0,.2);
+        }
+        .dark-theme .controls-panel .form-check-label {
+            color: #d0d0d0;
+        }
+        .dark-theme .form-check-input:checked {
+            background-color: #61dafb;
+            border-color: #61dafb;
+        }
+
+        .dark-theme .card {
+            background-color: #2a2a2a;
+            color: #e9ecef;
+            box-shadow: 0 6px 20px rgba(0,0,0,.35);
+        }
+
+        .dark-theme .card-title {
+            color: #e0e0e0;
+        }
+
+        .dark-theme .list-group-item {
+            border-color: rgba(255,255,255,.15);
+            color: #c0c0c0;
+        }
+
+        .dark-theme .btn-outline-light {
+            color: #e0e0e0;
+            border-color: #6c757d;
+        }
+
+        .dark-theme .btn-outline-light:hover {
+            background-color: #6c757d;
+            color: #e0e0e0;
+        }
+        .dark-theme .atom-label {
+            background-color: rgba(255, 255, 255, 0.2);
+            color: #61dafb;
+        }
+    </style>
+</head>
+<body>
+
+    <!-- Navbar -->
+    <nav class="navbar navbar-expand-lg navbar-dark bg-dark fixed-top">
+        <div class="container-fluid">
+            <a class="navbar-brand animate__animated animate__fadeInLeft" href="#">Bravais Explorer</a>
+            <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav" aria-controls="navbarNav" aria-expanded="false" aria-label="Toggle navigation">
+                <span class="navbar-toggler-icon"></span>
+            </button>
+            <div class="collapse navbar-collapse animate__animated animate__fadeInRight" id="navbarNav">
+                <ul class="navbar-nav ms-auto">
+                    <li class="nav-item">
+                        <a class="nav-link active" aria-current="page" href="#home">Home</a>
+                    </li>
+                    <li class="nav-item dropdown">
+                        <a class="nav-link dropdown-toggle" href="#" id="navbarDropdown" role="button" data-bs-toggle="dropdown" aria-expanded="false">
+                            Lattices
+                        </a>
+                        <ul class="dropdown-menu dropdown-menu-dark" aria-labelledby="navbarDropdown">
+                            <!-- Dynamically populated or hardcoded with all 14 -->
+                            <li><a class="dropdown-item lattice-select" data-system="cubic" data-type="P" href="#">Cubic (P)</a></li>
+                            <li><a class="dropdown-item lattice-select" data-system="cubic" data-type="I" href="#">Cubic (I)</a></li>
+                            <li><a class="dropdown-item lattice-select" data-system="cubic" data-type="F" href="#">Cubic (F)</a></li>
+                            <li><hr class="dropdown-divider"></li>
+                            <li><a class="dropdown-item lattice-select" data-system="tetragonal" data-type="P" href="#">Tetragonal (P)</a></li>
+                            <li><a class="dropdown-item lattice-select" data-system="tetragonal" data-type="I" href="#">Tetragonal (I)</a></li>
+                            <li><hr class="dropdown-divider"></li>
+                            <li><a class="dropdown-item lattice-select" data-system="orthorhombic" data-type="P" href="#">Orthorhombic (P)</a></li>
+                            <li><a class="dropdown-item lattice-select" data-system="orthorhombic" data-type="C" href="#">Orthorhombic (C)</a></li>
+                            <li><a class="dropdown-item lattice-select" data-system="orthorhombic" data-type="I" href="#">Orthorhombic (I)</a></li>
+                            <li><a class="dropdown-item lattice-select" data-system="orthorhombic" data-type="F" href="#">Orthorhombic (F)</a></li>
+                            <li><hr class="dropdown-divider"></li>
+                            <li><a class="dropdown-item lattice-select" data-system="hexagonal" data-type="P" href="#">Hexagonal (P)</a></li>
+                            <li><hr class="dropdown-divider"></li>
+                            <li><a class="dropdown-item lattice-select" data-system="rhombohedral" data-type="P" href="#">Rhombohedral (P)</a></li>
+                            <li><hr class="dropdown-divider"></li>
+                            <li><a class="dropdown-item lattice-select" data-system="monoclinic" data-type="P" href="#">Monoclinic (P)</a></li>
+                            <li><a class="dropdown-item lattice-select" data-system="monoclinic" data-type="C" href="#">Monoclinic (C)</a></li>
+                            <li><hr class="dropdown-divider"></li>
+                            <li><a class="dropdown-item lattice-select" data-system="triclinic" data-type="P" href="#">Triclinic (P)</a></li>
+                        </ul>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="#about">About</a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="#contact">Contact</a>
+                    </li>
+                    <li class="nav-item ms-lg-3">
+                        <button id="theme-toggle" class="btn btn-outline-light btn-sm">
+                            <i class="fas fa-sun" id="theme-icon"></i> <!-- Icon for theme toggle -->
+                        </button>
+                    </li>
+                </ul>
+            </div>
+        </div>
+    </nav>
+
+    <!-- Main Content -->
+    <main class="container-fluid mt-5 pt-5">
+        <section id="home" class="py-5 text-center">
+            <h1 class="display-4 animate__animated animate__fadeInDown">Explore the **14 Bravais Lattices**</h1>
+            <p class="lead animate__animated animate__fadeInUp">Visualize the fundamental building blocks of crystals in stunning 3D.</p>
+            <div class="row justify-content-center mt-4">
+                <div class="col-md-8">
+                    <div id="bravais-canvas-container" class="bravais-canvas-container animate__animated animate__zoomIn">
+                        <canvas id="bravaisCanvas"></canvas>
+                        <div id="label-container"></div> <!-- Container for CSS2D labels -->
+                        <div class="loading-overlay" id="loadingOverlay">
+                            <div class="spinner-border text-primary" role="status">
+                                <span class="visually-hidden">Loading...</span>
+                            </div>
+                            <p class="loading-text mt-3">Building lattice...</p>
+                        </div>
+                    </div>
+                    <!-- Controls Panel for 3D view -->
+                    <div class="controls-panel card p-3 mt-4 animate__animated animate__fadeInUp">
+                        <h5 class="card-title mb-3">Display Options</h5>
+                        <div class="row align-items-center">
+                            <div class="col-md-3 col-6 mb-2">
+                                <div class="form-check form-switch">
+                                    <input class="form-check-input" type="checkbox" id="toggleBonds" checked>
+                                    <label class="form-check-label" for="toggleBonds">Show Bonds</label>
+                                </div>
+                            </div>
+                            <div class="col-md-3 col-6 mb-2">
+                                <div class="form-check form-switch">
+                                    <input class="form-check-input" type="checkbox" id="togglePlanes">
+                                    <label class="form-check-label" for="togglePlanes">Show Planes</label>
+                                </div>
+                            </div>
+                            <div class="col-md-3 col-6 mb-2">
+                                <div class="form-check form-switch">
+                                    <input class="form-check-input" type="checkbox" id="toggleLabels">
+                                    <label class="form-check-label" for="toggleLabels">Show Labels</label>
+                                </div>
+                            </div>
+                            <div class="col-md-3 col-6 mb-2 text-md-end">
+                                <button id="reset-view-btn" class="btn btn-outline-secondary btn-sm me-2">Reset View</button>
+                                <div class="form-check form-switch d-inline-block align-middle">
+                                    <input class="form-check-input" type="checkbox" id="toggleAutoRotate">
+                                    <label class="form-check-label" for="toggleAutoRotate">Auto-Rotate</label>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <section id="details" class="py-5">
+            <h2 class="text-center mb-4 animate__animated animate__fadeIn">Lattice Details</h2>
+            <div class="row justify-content-center animate__animated animate__fadeInUp">
+                <div class="col-md-8">
+                    <div id="lattice-info" class="card">
+                        <div class="card-body">
+                            <h5 class="card-title" id="current-lattice-title">Select a lattice to view details</h5>
+                            <p class="card-text" id="current-lattice-description"></p>
+                            <ul class="list-group list-group-flush" id="current-lattice-properties">
+                                <!-- Properties will be added here by JS -->
+                            </ul>
+                            <a href="#" class="btn btn-info mt-3" target="_blank" id="moreInfoLink">Learn More <i class="fas fa-external-link-alt"></i></a>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <section id="about" class="py-5">
+            <h2 class="text-center mb-4 animate__animated animate__fadeIn">About This Project</h2>
+            <p class="text-center animate__animated animate__fadeInUp">This interactive web application allows you to explore the 14 unique Bravais lattices, categorized by their 7 crystal systems. Built using **Three.js** for stunning 3D rendering, **Bootstrap** for responsive design, and **vanilla JavaScript** for seamless interactivity, theme switching, and advanced effects.</p>
+            <p class="text-center animate__animated animate__fadeInUp">**Note on Geometry:** For simplicity and to keep the code self-contained, non-rectangular crystal systems (Hexagonal, Rhombohedral, Monoclinic, Triclinic) are currently visualized as scaled rectangular prisms with appropriate atom positions. A truly accurate representation of their non-orthogonal unit cells would require more complex geometric calculations and specialized Three.js mesh generation.</p>
+        </section>
+
+        <section id="contact" class="py-5">
+            <h2 class="text-center mb-4 animate__animated animate__fadeIn">Contact Us</h2>
+            <p class="text-center animate__animated animate__fadeInUp">Have questions or suggestions? We'd love to hear from you!</p>
+            <div class="text-center animate__animated animate__fadeIn">
+                <a href="mailto:info@example.com" class="btn btn-primary">Email Us <i class="fas fa-envelope"></i></a>
+            </div>
+        </section>
+    </main>
+
+    <!-- Footer -->
+    <footer class="bg-dark text-white py-4 mt-5 animate__animated animate__fadeInUp">
+        <div class="container text-center">
+            <p>&copy; 2025 Bravais Lattices Explorer. All rights reserved.</p>
+            <div class="social-icons">
+                <a href="https://github.com/your-profile" target="_blank" class="text-white mx-2"><i class="fab fa-github fa-2x animate__animated animate__pulse animate__infinite"></i></a>
+                <a href="https://twitter.com/your-profile" target="_blank" class="text-white mx-2"><i class="fab fa-twitter fa-2x animate__animated animate__pulse animate__infinite animate__delay-1s"></i></a>
+                <a href="https://linkedin.com/in/your-profile" target="_blank" class="text-white mx-2"><i class="fab fa-linkedin fa-2x animate__animated animate__pulse animate__infinite animate__delay-2s"></i></a>
+                <a href="https://www.instagram.com/your-profile" target="_blank" class="text-white mx-2"><i class="fab fa-instagram fa-2x animate__animated animate__pulse animate__infinite animate__delay-3s"></i></a>
+            </div>
+        </div>
+    </footer>
+
+    <!-- Bootstrap JS (bundle includes Popper) -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+    <!-- Three.js library and its example modules (non-module versions for direct embedding) -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/postprocessing/EffectComposer.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/postprocessing/RenderPass.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/postprocessing/ShaderPass.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/shaders/CopyShader.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/shaders/LuminosityHighPassShader.js"></script> <!-- Added LuminosityHighPassShader.js -->
+    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/postprocessing/UnrealBloomPass.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/renderers/CSS2DRenderer.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/loaders/RGBELoader.js"></script>
+
+    <script>
+        // --- Global Variables ---
+        let scene, camera, renderer, controls, composer, labelRenderer;
+        let currentLatticeGroup = new THREE.Group(); // Group to hold current lattice objects
+        let ambientLight, directionalLight;
+        let autoRotate = false; // Flag for auto-rotation
+        let atomLabelObjects = []; // To store CSS2DObject instances for labels
+
+        // --- DOM Elements ---
+        const canvas = document.getElementById('bravaisCanvas');
+        const themeToggleBtn = document.getElementById('theme-toggle');
+        const themeIcon = document.getElementById('theme-icon'); // Get the icon element
+        const loadingOverlay = document.getElementById('loadingOverlay');
+        const latticeInfoTitle = document.getElementById('current-lattice-title');
+        const latticeInfoDescription = document.getElementById('current-lattice-description');
+        const latticeInfoProperties = document.getElementById('current-lattice-properties');
+        const moreInfoLink = document.getElementById('moreInfoLink');
+        const labelContainer = document.getElementById('label-container');
+
+        // Controls panel checkboxes/buttons
+        const toggleBondsCheckbox = document.getElementById('toggleBonds');
+        const togglePlanesCheckbox = document.getElementById('togglePlanes');
+        const toggleLabelsCheckbox = document.getElementById('toggleLabels');
+        const resetViewBtn = document.getElementById('reset-view-btn');
+        const toggleAutoRotateCheckbox = document.getElementById('toggleAutoRotate');
+
+
+        // --- Bravais Lattice Data (Expanded and more comprehensive example) ---
+        // NOTE: For simplicity and to keep the code self-contained in one file,
+        // non-rectangular crystal systems (Hexagonal, Rhombohedral, Monoclinic, Triclinic)
+        // are currently visualized as scaled rectangular prisms with appropriate atom positions.
+        // A truly accurate representation of their non-orthogonal unit cells would require
+        // more complex geometric calculations and specialized Three.js mesh generation
+        // (e.g., custom BufferGeometries based on lattice vectors and angles).
+        const bravaisLatticesData = {
+            cubic: {
+                P: {
+                    name: "Primitive Cubic (P)",
+                    shortName: "Cubic P",
+                    description: "The simplest and most symmetric Bravais lattice. Atoms are located only at the corners of the cube.",
+                    properties: [
+                        "Lattice parameters: a = b = c, α = β = γ = 90°",
+                        "Atoms per unit cell: 1",
+                        "Coordination number: 6",
+                        "Packing efficiency: 52.4%"
+                    ],
+                    moreInfoUrl: "https://en.wikipedia.org/wiki/Cubic_crystal_system#Primitive_cubic_(P)",
+                    atoms: [
+                        { x: 0.5, y: 0.5, z: 0.5, label: 'A' }, { x: -0.5, y: 0.5, z: 0.5, label: 'B' },
+                        { x: 0.5, y: -0.5, z: 0.5, label: 'C' }, { x: 0.5, y: 0.5, z: -0.5, label: 'D' },
+                        { x: -0.5, y: -0.5, z: 0.5, label: 'E' }, { x: -0.5, y: 0.5, z: -0.5, label: 'F' },
+                        { x: 0.5, y: -0.5, z: -0.5, label: 'G' }, { x: -0.5, y: -0.5, z: -0.5, label: 'H' }
+                    ],
+                    bonds: [
+                        [0,1], [1,2], [2,3], [3,0], // Bottom face
+                        [4,5], [5,6], [6,7], [7,4], // Top face
+                        [0,4], [1,5], [2,6], [3,7]  // Vertical edges
+                    ],
+                    planes: [
+                        [0,3,2,1], // Bottom face
+                        [4,5,6,7], // Top face
+                        [0,1,5,4], // Front face
+                        [3,2,6,7], // Back face
+                        [0,4,7,3], // Left face
+                        [1,2,6,5]  // Right face
+                    ],
+                    unitCellScale: {x: 1, y: 1, z: 1}
+                },
+                I: {
+                    name: "Body-Centered Cubic (BCC)",
+                    shortName: "Cubic I",
+                    description: "Has atoms at the corners and one atom at the center of the cube.",
+                    properties: [
+                        "Lattice parameters: a = b = c, α = β = γ = 90°",
+                        "Atoms per unit cell: 2",
+                        "Coordination number: 8",
+                        "Packing efficiency: 68%"
+                    ],
+                    moreInfoUrl: "https://en.wikipedia.org/wiki/Cubic_crystal_system#Body-centred_cubic_(I)",
+                    atoms: [
+                        { x: 0.5, y: 0.5, z: 0.5, label: 'C1' }, { x: -0.5, y: 0.5, z: 0.5, label: 'C2' },
+                        { x: 0.5, y: -0.5, z: 0.5, label: 'C3' }, { x: 0.5, y: 0.5, z: -0.5, label: 'C4' },
+                        { x: -0.5, y: -0.5, z: 0.5, label: 'C5' }, { x: -0.5, y: 0.5, z: -0.5, label: 'C6' },
+                        { x: 0.5, y: -0.5, z: -0.5, label: 'C7' }, { x: -0.5, y: -0.5, z: -0.5, label: 'C8' },
+                        { x: 0, y: 0, z: 0, label: 'B' } // Body center (index 8)
+                    ],
+                    bonds: [
+                        [0,8], [1,8], [2,8], [3,8], [4,8], [5,8], [6,8], [7,8] // Bonds to body center
+                    ].concat([
+                        [0,1], [1,2], [2,3], [3,0],
+                        [4,5], [5,6], [6,7], [7,4],
+                        [0,4], [1,5], [2,6], [3,7]
+                    ]),
+                    planes: [
+                        [0,3,2,1], [4,5,6,7],
+                        [0,1,5,4], [3,2,6,7],
+                        [0,4,7,3], [1,2,6,5]
+                    ],
+                    unitCellScale: {x: 1, y: 1, z: 1}
+                },
+                F: {
+                    name: "Face-Centered Cubic (FCC)",
+                    shortName: "Cubic F",
+                    description: "Has atoms at the corners and one atom at the center of each face.",
+                    properties: [
+                        "Lattice parameters: a = b = c, α = β = γ = 90°",
+                        "Atoms per unit cell: 4",
+                        "Coordination number: 12",
+                        "Packing efficiency: 74%"
+                    ],
+                    moreInfoUrl: "https://en.wikipedia.org/wiki/Cubic_crystal_system#Face-centred_cubic_(F)",
+                    atoms: [
+                        { x: 0.5, y: 0.5, z: 0.5, label: 'C1' }, { x: -0.5, y: 0.5, z: 0.5, label: 'C2' }, // 0,1
+                        { x: 0.5, y: -0.5, z: 0.5, label: 'C3' }, { x: 0.5, y: 0.5, z: -0.5, label: 'C4' }, // 2,3
+                        { x: -0.5, y: -0.5, z: 0.5, label: 'C5' }, { x: -0.5, y: 0.5, z: -0.5, label: 'C6' }, // 4,5
+                        { x: 0.5, y: -0.5, z: -0.5, label: 'C7' }, { x: -0.5, y: -0.5, z: -0.5, label: 'C8' }, // 6,7
+                        { x: 0, y: 0.5, z: 0, label: 'F1' },   // Face center: Top (index 8)
+                        { x: 0, y: -0.5, z: 0, label: 'F2' },  // Face center: Bottom (index 9)
+                        { x: 0.5, y: 0, z: 0, label: 'F3' },   // Face center: Right (index 10)
+                        { x: -0.5, y: 0, z: 0, label: 'F4' },  // Face center: Left (index 11)
+                        { x: 0, y: 0, z: 0.5, label: 'F5' },   // Face center: Front (index 12)
+                        { x: 0, y: 0, z: -0.5, label: 'F6' }   // Face center: Back (index 13)
+                    ],
+                    // bonds will be calculated after bravaisLatticesData is fully defined
+                    bonds: [],
+                    planes: [
+                        [0,3,2,1], [4,5,6,7],
+                        [0,1,5,4], [3,2,6,7],
+                        [0,4,7,3], [1,2,6,5]
+                    ],
+                    unitCellScale: {x: 1, y: 1, z: 1}
+                }
+            },
+            tetragonal: {
+                P: {
+                    name: "Primitive Tetragonal (P)",
+                    shortName: "Tetragonal P",
+                    description: "Similar to cubic, but one axis (c) has a different length. Atoms only at corners.",
+                    properties: [
+                        "Lattice parameters: a = b ≠ c, α = β = γ = 90°",
+                        "Atoms per unit cell: 1"
+                    ],
+                    moreInfoUrl: "https://en.wikipedia.org/wiki/Tetragonal_crystal_system#Primitive_tetragonal_(P)",
+                    atoms: [
+                        { x: 0.5, y: 0.5, z: 0.75, label: 'C1' }, { x: -0.5, y: 0.5, z: 0.75, label: 'C2' },
+                        { x: 0.5, y: -0.5, z: 0.75, label: 'C3' }, { x: 0.5, y: 0.5, z: -0.75, label: 'C4' },
+                        { x: -0.5, y: -0.5, z: 0.75, label: 'C5' }, { x: -0.5, y: 0.5, z: -0.75, label: 'C6' },
+                        { x: 0.5, y: -0.5, z: -0.75, label: 'C7' }, { x: -0.5, y: -0.5, z: -0.75, label: 'C8' }
+                    ],
+                    bonds: [
+                        [0,1], [1,2], [2,3], [3,0],
+                        [4,5], [5,6], [6,7], [7,4],
+                        [0,4], [1,5], [2,6], [3,7]
+                    ],
+                    planes: [
+                        [0,3,2,1], [4,5,6,7],
+                        [0,1,5,4], [3,2,6,7],
+                        [0,4,7,3], [1,2,6,5]
+                    ],
+                    unitCellScale: {x: 1, y: 1, z: 1.5} // Scale 'c' axis
+                },
+                I: {
+                    name: "Body-Centered Tetragonal (BCC)",
+                    shortName: "Tetragonal I",
+                    description: "Tetragonal unit cell with an additional atom at its body center.",
+                    properties: [
+                        "Lattice parameters: a = b ≠ c, α = β = γ = 90°",
+                        "Atoms per unit cell: 2"
+                    ],
+                    moreInfoUrl: "https://en.wikipedia.org/wiki/Tetragonal_crystal_system#Body-centred_tetragonal_(I)",
+                    atoms: [
+                        { x: 0.5, y: 0.5, z: 0.75, label: 'C1' }, { x: -0.5, y: 0.5, z: 0.75, label: 'C2' },
+                        { x: 0.5, y: -0.5, z: 0.75, label: 'C3' }, { x: 0.5, y: 0.5, z: -0.75, label: 'C4' },
+                        { x: -0.5, y: -0.5, z: 0.75, label: 'C5' }, { x: -0.5, y: 0.5, z: -0.75, label: 'C6' },
+                        { x: 0.5, y: -0.5, z: -0.75, label: 'C7' }, { x: -0.5, y: -0.5, z: -0.75, label: 'C8' },
+                        { x: 0, y: 0, z: 0, label: 'B' } // Body center (index 8)
+                    ],
+                    bonds: [
+                        [0,8], [1,8], [2,8], [3,8], [4,8], [5,8], [6,8], [7,8] // Bonds to body center
+                    ].concat([
+                        [0,1], [1,2], [2,3], [3,0],
+                        [4,5], [5,6], [6,7], [7,4],
+                        [0,4], [1,5], [2,6], [3,7]
+                    ]),
+                    planes: [
+                        [0,3,2,1], [4,5,6,7],
+                        [0,1,5,4], [3,2,6,7],
+                        [0,4,7,3], [1,2,6,5]
+                    ],
+                    unitCellScale: {x: 1, y: 1, z: 1.5}
+                }
+            },
+            orthorhombic: {
+                P: {
+                    name: "Primitive Orthorhombic (P)",
+                    shortName: "Orthorhombic P",
+                    description: "Three unequal axes at right angles. Atoms only at corners.",
+                    properties: [
+                        "Lattice parameters: a ≠ b ≠ c, α = β = γ = 90°",
+                        "Atoms per unit cell: 1"
+                    ],
+                    moreInfoUrl: "https://en.wikipedia.org/wiki/Orthorhombic_crystal_system#Primitive_orthorhombic_(P)",
+                    atoms: [
+                        { x: 0.5, y: 0.5, z: 0.5, label: 'C1' }, { x: -0.5, y: 0.5, z: 0.5, label: 'C2' },
+                        { x: 0.5, y: -0.5, z: 0.5, label: 'C3' }, { x: 0.5, y: 0.5, z: -0.5, label: 'C4' },
+                        { x: -0.5, y: -0.5, z: 0.5, label: 'C5' }, { x: -0.5, y: 0.5, z: -0.5, label: 'C6' },
+                        { x: 0.5, y: -0.5, z: -0.5, label: 'C7' }, { x: -0.5, y: -0.5, z: -0.5, label: 'C8' }
+                    ],
+                    bonds: [
+                        [0,1], [1,2], [2,3], [3,0],
+                        [4,5], [5,6], [6,7], [7,4],
+                        [0,4], [1,5], [2,6], [3,7]
+                    ],
+                    planes: [
+                        [0,3,2,1], [4,5,6,7],
+                        [0,1,5,4], [3,2,6,7],
+                        [0,4,7,3], [1,2,6,5]
+                    ],
+                    unitCellScale: {x: 1.2, y: 0.8, z: 1.5} // Example unequal axes
+                },
+                C: {
+                    name: "Base-Centered Orthorhombic (C)",
+                    shortName: "Orthorhombic C",
+                    description: "Orthorhombic lattice with additional atoms at the center of two opposite faces (usually the C-faces).",
+                    properties: [
+                        "Lattice parameters: a ≠ b ≠ c, α = β = γ = 90°",
+                        "Atoms per unit cell: 2"
+                    ],
+                    moreInfoUrl: "https://en.wikipedia.org/wiki/Orthorhombic_crystal_system#Base-centred_orthorhombic_(C)",
+                    atoms: [
+                        { x: 0.5, y: 0.5, z: 0.5, label: 'C1' }, { x: -0.5, y: 0.5, z: 0.5, label: 'C2' },
+                        { x: 0.5, y: -0.5, z: 0.5, label: 'C3' }, { x: 0.5, y: 0.5, z: -0.5, label: 'C4' },
+                        { x: -0.5, y: -0.5, z: 0.5, label: 'C5' }, { x: -0.5, y: 0.5, z: -0.5, label: 'C6' },
+                        { x: 0.5, y: -0.5, z: -0.5, label: 'C7' }, { x: -0.5, y: -0.5, z: -0.5, label: 'C8' },
+                        { x: 0, y: 0, z: 0.5, label: 'FC1' }, // C-face center (front)
+                        { x: 0, y: 0, z: -0.5, label: 'FC2' }  // C-face center (back)
+                    ],
+                    bonds: [], // Will generate dynamically
+                    planes: [],
+                    unitCellScale: {x: 1.2, y: 0.8, z: 1.5}
+                },
+                I: {
+                    name: "Body-Centered Orthorhombic (I)",
+                    shortName: "Orthorhombic I",
+                    description: "Orthorhombic lattice with an additional atom at its body center.",
+                    properties: [
+                        "Lattice parameters: a ≠ b ≠ c, α = β = γ = 90°",
+                        "Atoms per unit cell: 2"
+                    ],
+                    moreInfoUrl: "https://en.wikipedia.org/wiki/Orthorhombic_crystal_system#Body-centred_orthorhombic_(I)",
+                    atoms: [
+                        { x: 0.5, y: 0.5, z: 0.5, label: 'C1' }, { x: -0.5, y: 0.5, z: 0.5, label: 'C2' },
+                        { x: 0.5, y: -0.5, z: 0.5, label: 'C3' }, { x: 0.5, y: 0.5, z: -0.5, label: 'C4' },
+                        { x: -0.5, y: -0.5, z: 0.5, label: 'C5' }, { x: -0.5, y: 0.5, z: -0.5, label: 'C6' },
+                        { x: 0.5, y: -0.5, z: -0.5, label: 'C7' }, { x: -0.5, y: -0.5, z: -0.5, label: 'C8' },
+                        { x: 0, y: 0, z: 0, label: 'B' }
+                    ],
+                    bonds: [], // Will generate dynamically
+                    planes: [],
+                    unitCellScale: {x: 1.2, y: 0.8, z: 1.5}
+                },
+                F: {
+                    name: "Face-Centered Orthorhombic (F)",
+                    shortName: "Orthorhombic F",
+                    description: "Orthorhombic lattice with additional atoms at the center of all six faces.",
+                    properties: [
+                        "Lattice parameters: a ≠ b ≠ c, α = β = γ = 90°",
+                        "Atoms per unit cell: 4"
+                    ],
+                    moreInfoUrl: "https://en.wikipedia.org/wiki/Orthorhombic_crystal_system#Face-centred_orthorhombic_(F)",
+                    atoms: [
+                        { x: 0.5, y: 0.5, z: 0.5, label: 'C1' }, { x: -0.5, y: 0.5, z: 0.5, label: 'C2' },
+                        { x: 0.5, y: -0.5, z: 0.5, label: 'C3' }, { x: 0.5, y: 0.5, z: -0.5, label: 'C4' },
+                        { x: -0.5, y: -0.5, z: 0.5, label: 'C5' }, { x: -0.5, y: 0.5, z: -0.5, label: 'C6' },
+                        { x: 0.5, y: -0.5, z: -0.5, label: 'C7' }, { x: -0.5, y: -0.5, z: -0.5, label: 'C8' },
+                        { x: 0, y: 0.5, z: 0, label: 'F1' },   // Face center: Top
+                        { x: 0, y: -0.5, z: 0, label: 'F2' },  // Face center: Bottom
+                        { x: 0.5, y: 0, z: 0, label: 'F3' },   // Face center: Right
+                        { x: -0.5, y: 0, z: 0, label: 'F4' },  // Face center: Left
+                        { x: 0, y: 0, z: 0.5, label: 'F5' },   // Face center: Front
+                        { x: 0, y: 0, z: -0.5, label: 'F6' }   // Face center: Back
+                    ],
+                    bonds: [], // Will generate dynamically
+                    planes: [],
+                    unitCellScale: {x: 1.2, y: 0.8, z: 1.5}
+                }
+            },
+            hexagonal: {
+                P: {
+                    name: "Primitive Hexagonal (P)",
+                    shortName: "Hexagonal P",
+                    description: "Features a hexagonal base with a 120° angle between two axes, and the third axis perpendicular to the base.",
+                    properties: [
+                        "Lattice parameters: a = b ≠ c, α = β = γ = 90°, γ = 120°",
+                        "Atoms per unit cell: 1 (for the primitive parallelepiped cell)"
+                    ],
+                    moreInfoUrl: "https://en.wikipedia.org/wiki/Hexagonal_crystal_system#Primitive_hexagonal_(P)",
+                    atoms: [
+                        // For simplicity, representing the *effective* atoms for a conventional hexagonal prism.
+                        // The actual primitive cell is a rhombic prism.
+                        // These are the corners of a hexagonal prism scaled for visualization.
+                        { x: 0.5, y: 0.0, z: 0.75, label: 'H1' }, { x: 0.25, y: 0.433, z: 0.75, label: 'H2' },
+                        { x: -0.25, y: 0.433, z: 0.75, label: 'H3' }, { x: -0.5, y: 0.0, z: 0.75, label: 'H4' },
+                        { x: -0.25, y: -0.433, z: 0.75, label: 'H5' }, { x: 0.25, y: -0.433, z: 0.75, label: 'H6' },
+                        { x: 0.5, y: 0.0, z: -0.75, label: 'H7' }, { x: 0.25, y: 0.433, z: -0.75, label: 'H8' },
+                        { x: -0.25, y: 0.433, z: -0.75, label: 'H9' }, { x: -0.5, y: 0.0, z: -0.75, label: 'H10' },
+                        { x: -0.25, y: -0.433, z: -0.75, label: 'H11' }, { x: 0.25, y: -0.433, z: -0.75, label: 'H12' }
+                    ],
+                    bonds: [], // Will generate dynamically
+                    planes: [],
+                    unitCellScale: {x: 1, y: 1, z: 1.5} // Represents a/b/c ratio for visualization
+                }
+            },
+            rhombohedral: {
+                P: {
+                    name: "Primitive Rhombohedral (P)",
+                    shortName: "Rhombohedral P",
+                    description: "All axes are equal, but angles are not 90° (all equal, but not 90°).",
+                    properties: [
+                        "Lattice parameters: a = b = c, α = β = γ ≠ 90°",
+                        "Atoms per unit cell: 1"
+                    ],
+                    moreInfoUrl: "https://en.wikipedia.org/wiki/Trigonal_crystal_system#Rhombohedral_(R)",
+                    atoms: [
+                        { x: 0.5, y: 0.5, z: 0.5, label: 'C1' }, { x: -0.5, y: 0.5, z: 0.5, label: 'C2' },
+                        { x: 0.5, y: -0.5, z: 0.5, label: 'C3' }, { x: 0.5, y: 0.5, z: -0.5, label: 'C4' },
+                        { x: -0.5, y: -0.5, z: 0.5, label: 'C5' }, { x: -0.5, y: 0.5, z: -0.5, label: 'C6' },
+                        { x: 0.5, y: -0.5, z: -0.5, label: 'C7' }, { x: -0.5, y: -0.5, z: -0.5, label: 'C8' }
+                    ],
+                    bonds: [], // Will generate dynamically
+                    planes: [],
+                    unitCellScale: {x: 1, y: 1, z: 1} // For visual, angles are not handled by simple scaling
+                }
+            },
+            monoclinic: {
+                P: {
+                    name: "Primitive Monoclinic (P)",
+                    shortName: "Monoclinic P",
+                    description: "Three unequal axes, two at right angles, one not (β ≠ 90°).",
+                    properties: [
+                        "Lattice parameters: a ≠ b ≠ c, α = γ = 90°, β ≠ 90°",
+                        "Atoms per unit cell: 1"
+                    ],
+                    moreInfoUrl: "https://en.wikipedia.org/wiki/Monoclinic_crystal_system#Primitive_monoclinic_(P)",
+                    atoms: [
+                        { x: 0.5, y: 0.5, z: 0.5, label: 'C1' }, { x: -0.5, y: 0.5, z: 0.5, label: 'C2' },
+                        { x: 0.5, y: -0.5, z: 0.5, label: 'C3' }, { x: 0.5, y: 0.5, z: -0.5, label: 'C4' },
+                        { x: -0.5, y: -0.5, z: 0.5, label: 'C5' }, { x: -0.5, y: 0.5, z: -0.5, label: 'C6' },
+                        { x: 0.5, y: -0.5, z: -0.5, label: 'C7' }, { x: -0.5, y: -0.5, z: -0.5, label: 'C8' }
+                    ],
+                    bonds: [], // Will generate dynamically
+                    planes: [],
+                    unitCellScale: {x: 1.2, y: 1.5, z: 0.9} // Example unequal axes
+                },
+                C: {
+                    name: "Base-Centered Monoclinic (C)",
+                    shortName: "Monoclinic C",
+                    description: "Monoclinic lattice with additional atoms at the center of two opposite faces.",
+                    properties: [
+                        "Lattice parameters: a ≠ b ≠ c, α = γ = 90°, β ≠ 90°",
+                        "Atoms per unit cell: 2"
+                    ],
+                    moreInfoUrl: "https://en.wikipedia.org/wiki/Monoclinic_crystal_system#Base-centred_monoclinic_(C)",
+                    atoms: [
+                        { x: 0.5, y: 0.5, z: 0.5, label: 'C1' }, { x: -0.5, y: 0.5, z: 0.5, label: 'C2' },
+                        { x: 0.5, y: -0.5, z: 0.5, label: 'C3' }, { x: 0.5, y: 0.5, z: -0.5, label: 'C4' },
+                        { x: -0.5, y: -0.5, z: 0.5, label: 'C5' }, { x: -0.5, y: 0.5, z: -0.5, label: 'C6' },
+                        { x: 0.5, y: -0.5, z: -0.5, label: 'C7' }, { x: -0.5, y: -0.5, z: -0.5, label: 'C8' },
+                        { x: 0, y: 0, z: 0.5, label: 'FC1' }, // C-face center (front)
+                        { x: 0, y: 0, z: -0.5, label: 'FC2' }  // C-face center (back)
+                    ],
+                    bonds: [], // Will generate dynamically
+                    planes: [],
+                    unitCellScale: {x: 1.2, y: 1.5, z: 0.9}
+                }
+            },
+            triclinic: {
+                P: {
+                    name: "Primitive Triclinic (P)",
+                    shortName: "Triclinic P",
+                    description: "The least symmetric. Three unequal axes, no angles are 90°.",
+                    properties: [
+                        "Lattice parameters: a ≠ b ≠ c, α ≠ β ≠ γ ≠ 90°",
+                        "Atoms per unit cell: 1"
+                    ],
+                    moreInfoUrl: "https://en.wikipedia.org/wiki/Triclinic_crystal_system#Primitive_triclinic_(P)",
+                    atoms: [
+                        { x: 0.5, y: 0.5, z: 0.5, label: 'C1' }, { x: -0.5, y: 0.5, z: 0.5, label: 'C2' },
+                        { x: 0.5, y: -0.5, z: 0.5, label: 'C3' }, { x: 0.5, y: 0.5, z: -0.5, label: 'C4' },
+                        { x: -0.5, y: -0.5, z: 0.5, label: 'C5' }, { x: -0.5, y: 0.5, z: -0.5, label: 'C6' },
+                        { x: 0.5, y: -0.5, z: -0.5, label: 'C7' }, { x: -0.5, y: -0.5, z: -0.5, label: 'C8' }
+                    ],
+                    bonds: [], // Will generate dynamically
+                    planes: [],
+                    unitCellScale: {x: 1.1, y: 0.9, z: 1.3} // Example unequal axes
+                }
+            }
+        };
+
+        // Calculate FCC bonds after bravaisLatticesData is defined
+        bravaisLatticesData.cubic.F.bonds = (function() {
+            const bonds = [];
+            // Connect corner atoms to face-centered atoms
+            const corners = [0,1,2,3,4,5,6,7];
+            const faceCenters = [8,9,10,11,12,13];
+            corners.forEach(cIdx => {
+                faceCenters.forEach(fIdx => {
+                    const pos1 = new THREE.Vector3(bravaisLatticesData.cubic.F.atoms[cIdx].x, bravaisLatticesData.cubic.F.atoms[cIdx].y, bravaisLatticesData.cubic.F.atoms[cIdx].z);
+                    const pos2 = new THREE.Vector3(bravaisLatticesData.cubic.F.atoms[fIdx].x, bravaisLatticesData.cubic.F.atoms[fIdx].y, bravaisLatticesData.cubic.F.atoms[fIdx].z);
+                    const distSq = pos1.distanceToSquared(pos2);
+                    if (distSq < 0.6) { // Approx (sqrt(2)/2)^2 = 0.5
+                        bonds.push([cIdx, fIdx]);
+                    }
+                });
+            });
+            // Add unit cell edges for clarity (optional, but good for visualization)
+            bonds.push(...[
+                [0,1], [1,2], [2,3], [3,0],
+                [4,5], [5,6], [6,7], [7,4],
+                [0,4], [1,5], [2,6], [3,7]
+            ]);
+            return bonds;
+        })();
+
+
+        // --- Three.js Helper Functions ---
+
+        // Material Definitions
+        const atomMaterial = new THREE.MeshStandardMaterial({
+            color: 0x61dafb, // Vibrant Cyan
+            metalness: 0.9, // More metallic
+            roughness: 0.2, // Shinier
+            envMapIntensity: 2.0, // Stronger reflections
+            emissive: 0x61dafb, // Emissive color for bloom
+            emissiveIntensity: 0.2 // Subtle glow
+        });
+
+        const bondMaterial = new THREE.MeshBasicMaterial({
+            color: 0x3498db, // Primary Blue
+            transparent: true,
+            opacity: 0.7
+        });
+
+        const unitCellLineMaterial = new THREE.LineBasicMaterial({
+            color: 0xebf2f7, // Off-white/light grey for lines
+            linewidth: 3 // This parameter might not be effective across all WebGL impl.
+        });
+
+        const unitCellPlaneMaterial = new THREE.MeshBasicMaterial({
+            color: 0x3498db, // Match bond color
+            transparent: true,
+            opacity: 0.1,
+            side: THREE.DoubleSide
+        });
+
+        // Create Atom Sphere
+        function createAtomSphere(position, labelText = '') {
+            const geometry = new THREE.SphereGeometry(0.1, 32, 32);
+            const atom = new THREE.Mesh(geometry, atomMaterial);
+            atom.position.set(position.x, position.y, position.z);
+            atom.userData.type = 'atom'; // For later identification
+            atom.userData.label = labelText; // Store label text
+
+            if (toggleLabelsCheckbox.checked && labelText) {
+                const labelDiv = document.createElement('div');
+                labelDiv.className = 'atom-label';
+                labelDiv.textContent = labelText;
+                const cssLabel = new THREE.CSS2DObject(labelDiv); // Use THREE.CSS2DObject
+                cssLabel.position.copy(atom.position);
+                atom.add(cssLabel); // Add label as a child of the atom
+                atomLabelObjects.push(cssLabel);
+            }
+            return atom;
+        }
+
+        // Create Bond (Cylinder between two points)
+        function createBond(pos1, pos2) {
+            const direction = new THREE.Vector3().subVectors(pos2, pos1);
+            const length = direction.length();
+            const bondGeometry = new THREE.CylinderGeometry(0.03, 0.03, length, 8); // Radius 0.03
+            const bond = new THREE.Mesh(bondGeometry, bondMaterial);
+
+            bond.position.copy(pos1).add(direction.multiplyScalar(0.5)); // Midpoint
+            bond.quaternion.setFromUnitVectors(new THREE.Vector3(0, 1, 0), direction.normalize()); // Orient cylinder
+            bond.userData.type = 'bond';
+            return bond;
+        }
+
+        // Create Unit Cell Outline (Edges) - Generic for rectangular cells
+        function createUnitCellOutline(scale = {x:1, y:1, z:1}) {
+            const vertices = [
+                new THREE.Vector3(-0.5 * scale.x, -0.5 * scale.y, -0.5 * scale.z),
+                new THREE.Vector3(0.5 * scale.x, -0.5 * scale.y, -0.5 * scale.z),
+                new THREE.Vector3(0.5 * scale.x, 0.5 * scale.y, -0.5 * scale.z),
+                new THREE.Vector3(-0.5 * scale.x, 0.5 * scale.y, -0.5 * scale.z),
+                new THREE.Vector3(-0.5 * scale.x, -0.5 * scale.y, 0.5 * scale.z),
+                new THREE.Vector3(0.5 * scale.x, -0.5 * scale.y, 0.5 * scale.z),
+                new THREE.Vector3(0.5 * scale.x, 0.5 * scale.y, 0.5 * scale.z),
+                new THREE.Vector3(-0.5 * scale.x, 0.5 * scale.y, 0.5 * scale.z)
+            ];
+
+            const edges = [
+                0, 1, 1, 2, 2, 3, 3, 0, // Bottom face
+                4, 5, 5, 6, 6, 7, 7, 4, // Top face
+                0, 4, 1, 5, 2, 6, 3, 7  // Vertical edges
+            ];
+
+            const geometry = new THREE.BufferGeometry();
+            const positions = new Float32Array(vertices.flatMap(v => [v.x, v.y, v.z]));
+            geometry.setAttribute('position', new THREE.BufferAttribute(positions, 3));
+            geometry.setIndex(edges);
+
+            const unitCell = new THREE.LineSegments(geometry, unitCellLineMaterial);
+            unitCell.userData.type = 'outline';
+            return unitCell;
+        }
+
+        // Create Unit Cell Planes (Faces) - Generic for rectangular cells
+        function createUnitCellPlanes(scale = {x:1, y:1, z:1}) {
+            const planesGroup = new THREE.Group();
+
+            const v = [
+                new THREE.Vector3(-0.5 * scale.x, -0.5 * scale.y, -0.5 * scale.z),
+                new THREE.Vector3(0.5 * scale.x, -0.5 * scale.y, -0.5 * scale.z),
+                new THREE.Vector3(0.5 * scale.x, 0.5 * scale.y, -0.5 * scale.z),
+                new THREE.Vector3(-0.5 * scale.x, 0.5 * scale.y, -0.5 * scale.z),
+                new THREE.Vector3(-0.5 * scale.x, -0.5 * scale.y, 0.5 * scale.z),
+                new THREE.Vector3(0.5 * scale.x, -0.5 * scale.y, 0.5 * scale.z),
+                new THREE.Vector3(0.5 * scale.x, 0.5 * scale.y, 0.5 * scale.z),
+                new THREE.Vector3(-0.5 * scale.x, 0.5 * scale.y, 0.5 * scale.z)
+            ];
+
+            const faces = [
+                [v[0], v[3], v[2], v[1]], // Bottom (-Z)
+                [v[4], v[5], v[6], v[7]], // Top (+Z)
+                [v[0], v[4], v[7], v[3]], // Left (-X)
+                [v[1], v[2], v[6], v[5]], // Right (+X)
+                [v[0], v[1], v[5], v[4]], // Back (-Y)
+                [v[3], v[7], v[6], v[2]]  // Front (+Y)
+            ];
+
+            faces.forEach(faceVertices => {
+                const geometry = new THREE.BufferGeometry();
+                const positions = new Float32Array([
+                    faceVertices[0].x, faceVertices[0].y, faceVertices[0].z,
+                    faceVertices[1].x, faceVertices[1].y, faceVertices[1].z,
+                    faceVertices[2].x, faceVertices[2].y, faceVertices[2].z,
+                    faceVertices[0].x, faceVertices[0].y, faceVertices[0].z,
+                    faceVertices[2].x, faceVertices[2].y, faceVertices[2].z,
+                    faceVertices[3].x, faceVertices[3].y, faceVertices[3].z
+                ]);
+                geometry.setAttribute('position', new THREE.BufferAttribute(positions, 3));
+
+                const planeMesh = new THREE.Mesh(geometry, unitCellPlaneMaterial);
+                planeMesh.userData.type = 'plane';
+                planesGroup.add(planeMesh);
+            });
+
+            return planesGroup;
+        }
+
+        // Function to create a subtle particle background
+        function createParticleBackground() {
+            const particleCount = 500;
+            const positions = new Float32Array(particleCount * 3);
+            const colors = new Float32Array(particleCount * 3);
+            const color = new THREE.Color();
+
+            const pMaterial = new THREE.PointsMaterial({
+                size: 0.05,
+                vertexColors: true,
+                transparent: true,
+                opacity: 0.6,
+                blending: THREE.AdditiveBlending,
+                sizeAttenuation: true
+            });
+
+            for (let i = 0; i < particleCount; i++) {
+                const i3 = i * 3;
+                positions[i3 + 0] = (Math.random() * 2 - 1) * 10;
+                positions[i3 + 1] = (Math.random() * 2 - 1) * 10;
+                positions[i3 + 2] = (Math.random() * 2 - 1) * 10;
+
+                color.setHSL(Math.random(), 0.8, 0.5);
+                colors[i3 + 0] = color.r;
+                colors[i3 + 1] = color.g;
+                colors[i3 + 2] = color.b;
+            }
+
+            const pGeometry = new THREE.BufferGeometry();
+            pGeometry.setAttribute('position', new THREE.BufferAttribute(positions, 3));
+            pGeometry.setAttribute('color', new THREE.BufferAttribute(colors, 3));
+
+            const particles = new THREE.Points(pGeometry, pMaterial);
+            scene.add(particles);
+        }
+
+        // --- Three.js Scene Initialization ---
+        function init() {
+            // Scene
+            scene = new THREE.Scene();
+
+            // Camera
+            camera = new THREE.PerspectiveCamera(75, canvas.clientWidth / canvas.clientHeight, 0.1, 100);
+            camera.position.set(2.5, 2.5, 3.5); // Adjusted for better initial view
+            camera.lookAt(0,0,0);
+
+            // Renderer
+            renderer = new THREE.WebGLRenderer({ canvas: canvas, antialias: true });
+            renderer.setPixelRatio(window.devicePixelRatio);
+            renderer.setSize(canvas.clientWidth, canvas.clientHeight);
+            renderer.toneMapping = THREE.ACESFilmicToneMapping; // Cinematic tone mapping
+            renderer.toneMappingExposure = 1.25;
+
+            // CSS2D Renderer for labels
+            labelRenderer = new THREE.CSS2DRenderer(); // Use THREE.CSS2DRenderer
+            labelRenderer.setSize(canvas.clientWidth, canvas.clientHeight);
+            labelRenderer.domElement.style.position = 'absolute';
+            labelRenderer.domElement.style.top = '0px';
+            labelRenderer.domElement.style.pointerEvents = 'none'; // Allow clicks to pass through
+            labelContainer.appendChild(labelRenderer.domElement);
+
+
+            // Post-processing Composer
+            composer = new THREE.EffectComposer(renderer); // Use THREE.EffectComposer
+            composer.addPass(new THREE.RenderPass(scene, camera)); // Use THREE.RenderPass
+
+            // Unreal Bloom Pass
+            // Ensure LuminosityHighPassShader.js is loaded before UnrealBloomPass.js
+            const bloomPass = new THREE.UnrealBloomPass(new THREE.Vector2(canvas.clientWidth, canvas.clientHeight), 1.5, 0.4, 0.85); // Use THREE.UnrealBloomPass
+            composer.addPass(bloomPass);
+
+            // Controls
+            controls = new THREE.OrbitControls(camera, renderer.domElement); // Use THREE.OrbitControls
+            controls.enableDamping = true;
+            controls.dampingFactor = 0.05;
+            controls.screenSpacePanning = false;
+            controls.minDistance = 1;
+            controls.maxDistance = 10;
+
+            // Lighting
+            ambientLight = new THREE.AmbientLight(0x404040, 0.5); // Use THREE.AmbientLight
+            scene.add(ambientLight);
+            directionalLight = new THREE.DirectionalLight(0xffffff, 1.2); // Use THREE.DirectionalLight
+            directionalLight.position.set(1, 1, 1).normalize();
+            scene.add(directionalLight);
+
+            // Environment Map for reflections
+            new THREE.RGBELoader() // Use THREE.RGBELoader
+                .setPath('https://cdn.jsdelivr.net/npm/three@0.128.0/examples/textures/equirectangular/')
+                .load('royal_esplanade_1k.hdr', function (texture) {
+                    texture.mapping = THREE.EquirectangularReflectionMapping;
+                    scene.environment = texture; // Apply to scene for reflections
+                    atomMaterial.needsUpdate = true; // Ensure material updates with new env map
+                });
+
+            // Add particle background
+            createParticleBackground();
+
+            // Apply initial theme settings to Three.js scene
+            loadThemePreference();
+
+            // Initial lattice display
+            displayLattice('cubic', 'P'); // Start with Cubic P
+
+            // Start animation loop
+            animate();
+        }
+
+        // --- Animation Loop ---
+        function animate() {
+            requestAnimationFrame(animate);
+            controls.update();
+
+            if (autoRotate) {
+                currentLatticeGroup.rotation.y += 0.005; // Adjust speed as needed
+            }
+
+            composer.render(); // Render with composer for post-processing
+            labelRenderer.render(scene, camera); // Render CSS2D labels
+        }
+
+        // --- Display Lattice Function ---
+        async function displayLattice(system, type) {
+            showLoadingOverlay();
+
+            // Dispose existing geometries and materials to prevent memory leaks
+            if (currentLatticeGroup) {
+                currentLatticeGroup.traverse(obj => {
+                    if (obj.isMesh || obj.isLineSegments) {
+                        if (obj.geometry) obj.geometry.dispose();
+                        if (obj.material) {
+                            if (Array.isArray(obj.material)) {
+                                obj.material.forEach(m => m.dispose());
+                            } else {
+                                m.dispose(); // Dispose material
+                            }
+                        }
+                    }
+                });
+                scene.remove(currentLatticeGroup);
+            }
+            // Clear existing CSS2D labels
+            atomLabelObjects.forEach(label => {
+                label.element.remove(); // Remove HTML element
+                label.parent.remove(label); // Remove from Three.js scene graph
+            });
+            atomLabelObjects = []; // Clear array
+
+            currentLatticeGroup = new THREE.Group(); // Create new group
+
+            const lattice = bravaisLatticesData[system]?.[type];
+
+            if (!lattice) {
+                console.error(`Lattice not found: ${system} ${type}`);
+                hideLoadingOverlay();
+                return;
+            }
+            currentLatticeGroup.userData.currentLatticeData = {system, type}; // Store current lattice info
+
+            // Update lattice info card
+            latticeInfoTitle.textContent = lattice.name;
+            latticeInfoDescription.textContent = lattice.description;
+            latticeInfoProperties.innerHTML = '';
+            lattice.properties.forEach(prop => {
+                const li = document.createElement('li');
+                li.className = 'list-group-item';
+                li.textContent = prop;
+                latticeInfoProperties.appendChild(li);
+            });
+            moreInfoLink.href = lattice.moreInfoUrl;
+
+            // Add atoms
+            const atomObjects = [];
+            lattice.atoms.forEach(pos => {
+                const atom = createAtomSphere(pos, pos.label); // Pass label text
+                currentLatticeGroup.add(atom);
+                atomObjects.push(atom); // Store for bond generation
+            });
+
+            // Add bonds (only if toggleBonds is checked)
+            if (toggleBondsCheckbox.checked) {
+                if (lattice.bonds && lattice.bonds.length > 0) {
+                    lattice.bonds.forEach(([idx1, idx2]) => {
+                        if (atomObjects[idx1] && atomObjects[idx2]) {
+                            currentLatticeGroup.add(createBond(atomObjects[idx1].position, atomObjects[idx2].position));
+                        }
+                    });
+                } else {
+                    // Fallback: create bonds between very close atoms (simple heuristic)
+                    const bondSearchRadiusSq = 0.5 * 0.5; // Example threshold
+                    for (let i = 0; i < atomObjects.length; i++) {
+                        for (let j = i + 1; j < atomObjects.length; j++) {
+                            const distSq = atomObjects[i].position.distanceToSquared(atomObjects[j].position);
+                            if (distSq < bondSearchRadiusSq) {
+                                currentLatticeGroup.add(createBond(atomObjects[i].position, atomObjects[j].position));
+                            }
+                        }
+                    }
+                }
+            }
+
+            // Add unit cell outline
+            currentLatticeGroup.add(createUnitCellOutline(lattice.unitCellScale));
+
+            // Add unit cell planes (only if togglePlanes is checked)
+            if (togglePlanesCheckbox.checked) {
+                currentLatticeGroup.add(createUnitCellPlanes(lattice.unitCellScale));
+            }
+
+            // Show/hide labels based on checkbox state
+            toggleLabels(toggleLabelsCheckbox.checked);
+
+            scene.add(currentLatticeGroup);
+
+            // Camera animation to look at the new lattice
+            const targetPosition = new THREE.Vector3(0, 0, 0); // Center of the lattice
+            const initialCameraPosition = camera.position.clone();
+            const targetCameraPosition = new THREE.Vector3(2.5, 2.5, 3.5); // Default view, can be adjusted per lattice
+            // Example: if (system === 'hexagonal') targetCameraPosition.set(3,3,4);
+
+            const duration = 1000; // milliseconds
+            const startTime = performance.now();
+
+            function animateCamera() {
+                const elapsed = performance.now() - startTime;
+                const progress = Math.min(elapsed / duration, 1);
+                const easedProgress = 0.5 - 0.5 * Math.cos(Math.PI * progress); // Ease-in-out
+
+                camera.position.lerpVectors(initialCameraPosition, targetCameraPosition, easedProgress);
+                camera.lookAt(targetPosition);
+                controls.target.lerpVectors(controls.target, targetPosition, easedProgress);
+                controls.update();
+
+                if (progress < 1) {
+                    requestAnimationFrame(animateCamera);
+                } else {
+                    hideLoadingOverlay();
+                }
+            }
+            animateCamera();
+        }
+
+        // --- Theme Toggling ---
+        function toggleTheme() {
+            const isDark = document.body.classList.contains('dark-theme');
+            document.body.classList.toggle('dark-theme', !isDark);
+            localStorage.setItem('theme', !isDark ? 'dark' : 'light');
+
+            // Update Three.js scene background and light colors
+            if (scene) scene.background = new THREE.Color(!isDark ? 0x212529 : 0xf0f2f5); // Match body background
+            if (ambientLight) ambientLight.color.set(!isDark ? 0x606060 : 0x404040);
+            if (directionalLight) directionalLight.color.set(!isDark ? 0xe0e0e0 : 0xffffff);
+
+            // Update theme icon
+            if (!isDark) { // Switched to dark theme
+                themeIcon.classList.remove('fa-sun');
+                themeIcon.classList.add('fa-moon');
+            } else { // Switched to light theme
+                themeIcon.classList.remove('fa-moon');
+                themeIcon.classList.add('fa-sun');
+            }
+        }
+
+        // Check for saved theme preference on load
+        function loadThemePreference() {
+            const savedTheme = localStorage.getItem('theme');
+            if (savedTheme === 'dark') {
+                document.body.classList.add('dark-theme');
+                if (scene) scene.background = new THREE.Color(0x212529);
+                if (ambientLight) ambientLight.color.set(0x606060);
+                if (directionalLight) directionalLight.color.set(0xe0e0e0);
+                themeIcon.classList.remove('fa-sun');
+                themeIcon.classList.add('fa-moon');
+            } else {
+                document.body.classList.remove('dark-theme');
+                if (scene) scene.background = new THREE.Color(0xf0f2f5);
+                if (ambientLight) ambientLight.color.set(0x404040);
+                if (directionalLight) directionalLight.color.set(0xffffff);
+                themeIcon.classList.remove('fa-moon');
+                themeIcon.classList.add('fa-sun');
+            }
+        }
+
+        // --- Loading Overlay Functions ---
+        function showLoadingOverlay() {
+            loadingOverlay.classList.remove('hidden');
+        }
+
+        function hideLoadingOverlay() {
+            // Hidden after camera animation completes, managed by animateCamera()
+        }
+
+        // --- Toggle Labels Function ---
+        function toggleLabels(show) {
+            atomLabelObjects.forEach(label => {
+                if (show) {
+                    label.element.classList.add('visible');
+                } else {
+                    label.element.classList.remove('visible');
+                }
+            });
+        }
+
+        // --- Reset View Function ---
+        function resetView() {
+            controls.reset(); // Resets camera position and target to initial state
+            // Optionally, animate back to default view if needed
+            const initialCameraPosition = camera.position.clone();
+            const targetCameraPosition = new THREE.Vector3(2.5, 2.5, 3.5);
+            const initialControlsTarget = controls.target.clone();
+            const targetControlsTarget = new THREE.Vector3(0,0,0);
+
+            const duration = 500; // milliseconds
+            const startTime = performance.now();
+
+            function animateReset() {
+                const elapsed = performance.now() - startTime;
+                const progress = Math.min(elapsed / duration, 1);
+                const easedProgress = 0.5 - 0.5 * Math.cos(Math.PI * progress);
+
+                camera.position.lerpVectors(initialCameraPosition, targetCameraPosition, easedProgress);
+                controls.target.lerpVectors(initialControlsTarget, targetControlsTarget, easedProgress);
+                controls.update();
+
+                if (progress < 1) {
+                    requestAnimationFrame(animateReset);
+                }
+            }
+            animateReset();
+        }
+
+        // --- Observer for Section Animations (Scroll Reveal) ---
+        const sections = document.querySelectorAll('section');
+        const observerOptions = {
+            root: null,
+            rootMargin: '0px',
+            threshold: 0.1
+        };
+
+        const observer = new IntersectionObserver((entries, observer) => {
+            entries.forEach(entry => {
+                if (entry.isIntersecting) {
+                    entry.target.querySelectorAll('.animate__animated').forEach(el => {
+                        // Re-trigger animation by removing and re-adding class
+                        const animationClass = Array.from(el.classList).find(cls => cls.startsWith('animate__'));
+                        if (animationClass) {
+                            el.classList.remove(animationClass);
+                            void el.offsetWidth; // Trigger reflow
+                            el.classList.add(animationClass);
+                        }
+                    });
+                    observer.unobserve(entry.target);
+                }
+            });
+        }, observerOptions);
+
+        sections.forEach(section => {
+            observer.observe(section);
+        });
+
+        // --- Event Listeners ---
+        window.addEventListener('load', () => {
+            init(); // Initialize Three.js scene
+            loadThemePreference(); // Apply theme preference immediately
+            // Trigger initial animations for elements already in view
+            document.querySelectorAll('.animate__animated').forEach(el => {
+                if (el.getBoundingClientRect().top < window.innerHeight) {
+                    const animationClass = Array.from(el.classList).find(cls => cls.startsWith('animate__'));
+                    if (animationClass) {
+                        el.classList.add('animate__animated'); // Ensure base class is there
+                    }
+                }
+            });
+        });
+
+        // Debounce for resize event
+        let resizeTimer;
+        window.addEventListener('resize', () => {
+            clearTimeout(resizeTimer);
+            resizeTimer = setTimeout(() => {
+                const canvasContainer = document.getElementById('bravais-canvas-container');
+                camera.aspect = canvasContainer.clientWidth / canvasContainer.clientHeight;
+                camera.updateProjectionMatrix();
+                renderer.setSize(canvasContainer.clientWidth, canvasContainer.clientHeight);
+                // Only attempt to set composer size if it's defined
+                if (composer) {
+                    composer.setSize(canvasContainer.clientWidth, canvasContainer.clientHeight);
+                }
+                labelRenderer.setSize(canvasContainer.clientWidth, canvasContainer.clientHeight); // Update label renderer size
+            }, 250); // Debounce by 250ms
+        });
+
+        themeToggleBtn.addEventListener('click', toggleTheme);
+
+        document.querySelectorAll('.lattice-select').forEach(item => {
+            item.addEventListener('click', function(event) {
+                event.preventDefault();
+                const system = this.dataset.system;
+                const type = this.dataset.type;
+                displayLattice(system, type);
+            });
+        });
+
+        // Controls Panel Event Listeners
+        toggleBondsCheckbox.addEventListener('change', () => {
+            const currentLatticeInfo = currentLatticeGroup.userData.currentLatticeData;
+            if (currentLatticeInfo) {
+                displayLattice(currentLatticeInfo.system, currentLatticeInfo.type);
+            }
+        });
+        togglePlanesCheckbox.addEventListener('change', () => {
+            const currentLatticeInfo = currentLatticeGroup.userData.currentLatticeData;
+            if (currentLatticeInfo) {
+                displayLattice(currentLatticeInfo.system, currentLatticeInfo.type);
+            }
+        });
+        toggleLabelsCheckbox.addEventListener('change', (event) => {
+            toggleLabels(event.target.checked);
+        });
+
+        resetViewBtn.addEventListener('click', resetView);
+
+        toggleAutoRotateCheckbox.addEventListener('change', (event) => {
+            autoRotate = event.target.checked;
+        });
+
+    </script>
+</body>
+</html>
